@@ -19,7 +19,7 @@
    You should have received a copy of the GNU Lesser General Public License
    along with plumed.  If not, see <http://www.gnu.org/licenses/>.
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
-#include "bias/Bias.h"
+#include "Bias.h"
 #include "core/PlumedMain.h"
 #include "core/ActionRegister.h"
 #include "core/ActionSet.h"
@@ -218,7 +218,7 @@ private:
   double		c_lr_scaling;
   bool			c_static_model;
 /*--grids--*/
-  std::unique_ptr<Grid> grid_bias,grid_target_ds,grid_bias_hist,grid_fes; 
+  std::unique_ptr<Grid> grid_bias,grid_target_ds,grid_bias_hist,grid_fes;
   vector<string>	g_min, g_max; 
   vector<float>		g_ds;
   vector<unsigned>	g_nbins;
@@ -245,7 +245,7 @@ public:
   explicit NeuralNetworkVes(const ActionOptions&);
   ~NeuralNetworkVes() {};
   void calculate();
-  std::unique_ptr<GridBase> createGridFromFile(const std::string&,const std::vector<Value*>&, const std::string&, const std::vector<std::string>&,const std::vector<std::string>&,const std::vector<unsigned>&,bool,bool);
+  std::unique_ptr<Grid> createGridFromFile(const std::string&,const std::vector<Value*>&, const std::string&, const std::vector<std::string>&,const std::vector<std::string>&,const std::vector<unsigned>&,bool,bool);
   static void registerKeywords(Keywords& keys);
 };
 
@@ -320,7 +320,6 @@ NeuralNetworkVes::NeuralNetworkVes(const ActionOptions&ao):
     KbT=plumed.getAtoms().getKbT();
     plumed_massert(KbT>0,"your MD engine does not pass the temperature to plumed, you must specify it using TEMP");
   }
-  o_beta = 1./KbT;
 
   /*--PARAMETERS--*/
   // update stride
@@ -395,9 +394,6 @@ NeuralNetworkVes::NeuralNetworkVes(const ActionOptions&ao):
       grid_fes->setValue(t,0.);
     } 
   }else{ //if restart
-    // WARNING: RESTART NOT IMPLEMENTED
-    error("RESTART NOT IMPLEMENTED.");
-
     if( keywords.exists("RESTART_FROM")){
       parse("RESTART_FROM",c_start_from);
       c_iter=c_start_from;
@@ -407,15 +403,14 @@ NeuralNetworkVes::NeuralNetworkVes(const ActionOptions&ao):
       //retrieve latest grid printed
       c_start_from=(c_iter/o_print)*o_print;
     }
-    //create grids from files // LB this needs to be fixed with the new Grid/GridBase version
-    //grid_bias=createGridFromFile(getLabel()+".bias",getArguments(),"bias.iter-"+to_string(c_start_from),g_min,g_max,g_nbins,sparsegrid,spline);
-    //grid_bias_hist=createGridFromFile(getLabel()+".hist",getArguments(),"hist.iter-"+to_string(c_start_from),g_min,g_max,g_nbins,sparsegrid,false);
-    //grid_fes=createGridFromFile(getLabel()+".fes",getArguments(),"fes.iter-"+to_string(c_start_from),g_min,g_max,g_nbins,sparsegrid,false);
-
-    //if(o_target>0)
-    //  grid_target_ds=createGridFromFile(getLabel()+".target",getArguments(),"target.iter-"+to_string(c_start_from),g_min,g_max,g_nbins,sparsegrid,false);
-    //else
-    //  grid_target_ds.reset(new Grid(getLabel()+".target",getArguments(),g_min,g_max,g_nbins,/*spline*/false,true));
+    //create grids from files //
+    grid_bias=createGridFromFile(getLabel()+".bias",getArguments(),"bias.iter-"+to_string(c_start_from),g_min,g_max,g_nbins,sparsegrid,spline);
+    grid_bias_hist=createGridFromFile(getLabel()+".hist",getArguments(),"hist.iter-"+to_string(c_start_from),g_min,g_max,g_nbins,sparsegrid,false);
+    grid_fes=createGridFromFile(getLabel()+".fes",getArguments(),"fes.iter-"+to_string(c_start_from),g_min,g_max,g_nbins,sparsegrid,false);
+    if(o_target>0)
+      grid_target_ds=createGridFromFile(getLabel()+".target",getArguments(),"target.iter-"+to_string(c_start_from),g_min,g_max,g_nbins,sparsegrid,false);
+    else
+      grid_target_ds.reset(new Grid(getLabel()+".target",getArguments(),g_min,g_max,g_nbins,/*spline*/false,true));
 
     //sync all . Not sure is mandatory but is no harm
      if(mpi_num>1)
@@ -461,8 +456,8 @@ NeuralNetworkVes::NeuralNetworkVes(const ActionOptions&ao):
     float b1=0.9, b2=0.999;
     parse("BETA1",b1);
     parse("BETA2",b2);
-    auto betas = std::make_tuple(b1,b2);
-    opt.betas(betas);
+    opt.beta1(b1);
+    opt.beta2(b2);
     nn_opt = make_shared<torch::optim::Adam>(nn_model->parameters(), opt);
   }else if (opt=="ADAGRAD")
     nn_opt = make_shared<torch::optim::Adagrad>(nn_model->parameters(), o_lrate);
@@ -543,8 +538,7 @@ NeuralNetworkVes::NeuralNetworkVes(const ActionOptions&ao):
       }
       ifile.close();
       //set lr to model
-      //dynamic_pointer_cast<torch::optim::Adam, torch::optim::Optimizer>(nn_opt)->options.learning_rate( o_lrate * c_lr_scaling );
-      static_cast<torch::optim::AdamOptions&>(nn_opt->param_groups()[0].options()).lr( o_lrate * c_lr_scaling ); // LB new version 1.8
+      dynamic_pointer_cast<torch::optim::Adam, torch::optim::Optimizer>(nn_opt)->options.learning_rate( o_lrate * c_lr_scaling ); 
     } else
       error("The COLVAR file you want to read: " + colvar_file + ", cannot be found!"); 
     
@@ -695,8 +689,7 @@ if(!static_bias){
         //vector to Tensor
         g_tensor[i] = torch::tensor(g_[i]).view( nn_model->parameters()[i].sizes() );
         //assign tensor to derivatives
-        //nn_model->parameters()[i].grad() = g_tensor[i].detach();
-        nn_model->parameters()[i].mutable_grad() = g_tensor[i].detach(); // LB new version 1.8
+        nn_model->parameters()[i].grad() = g_tensor[i].detach();
         //reset mean grads
         std::fill(g_[i].begin(), g_[i].end(), 0.);
         std::fill(g_mean[i].begin(), g_mean[i].end(), 0.);
@@ -792,10 +785,8 @@ if(!static_bias){
       //if adaptive: rescale it only when the KL is below a threshold
       if(o_adaptive_decay==0 || kl<o_adaptive_decay){
         c_lr_scaling*= o_decay;
-	      double current_lr=o_lrate*c_lr_scaling; 
-	      //dynamic_pointer_cast<torch::optim::Adam, torch::optim::Optimizer>(nn_opt)->options.learning_rate( current_lr );
-        static_cast<torch::optim::AdamOptions&>(nn_opt->param_groups()[0].options()).lr( current_lr ); // LB new version 1.8
-  
+	double current_lr=o_lrate*c_lr_scaling; 
+	dynamic_pointer_cast<torch::optim::Adam, torch::optim::Optimizer>(nn_opt)->options.learning_rate( current_lr );
         getPntrToComponent("lrscale")->set(c_lr_scaling);
       }
     }
@@ -805,9 +796,9 @@ if(!static_bias){
     if( do_update_target ){
       //compute new estimate of the fes
       for (Grid::index_t i=0; i<grid_fes->getSize(); i+=1){
-        grid_fes->setValue( i, - grid_bias->getValue(i) + (1./o_gamma) * grid_fes->getValue(i) );
+        grid_fes->setValue(i,- grid_bias->getValue(i) + (1./o_gamma) * grid_fes->getValue(i));
         float exp_beta_F = std::exp( (-o_beta/o_gamma) * grid_fes->getValue(i) ); 
-	      sum_exp_beta_F += exp_beta_F;
+	sum_exp_beta_F += exp_beta_F;
         grid_target_ds->setValue(i, exp_beta_F);
       }
       grid_target_ds->scaleAllValuesAndDerivatives( 1./sum_exp_beta_F );
@@ -934,7 +925,7 @@ if(!static_bias){
 } //end compute
 
 
-std::unique_ptr<GridBase> NeuralNetworkVes::createGridFromFile(const std::string& funcl,const std::vector<Value*>& args, const std::string& filename, const std::vector<std::string>& g_min,const std::vector<std::string>& g_max,const std::vector<unsigned>& g_nbins,bool sparsegrid,bool spline)
+std::unique_ptr<Grid> NeuralNetworkVes::createGridFromFile(const std::string& funcl,const std::vector<Value*>& args, const std::string& filename, const std::vector<std::string>& g_min,const std::vector<std::string>& g_max,const std::vector<unsigned>& g_nbins,bool sparsegrid,bool spline)
 {
     PLMD::IFile gridfile;
     gridfile.link(*this);
@@ -942,7 +933,7 @@ std::unique_ptr<GridBase> NeuralNetworkVes::createGridFromFile(const std::string
       gridfile.open(filename);
     else
       error("The GRID file you want to read: " + filename + ", cannot be found!");
-    auto grid=GridBase::create(funcl, args, gridfile, g_min, g_max, g_nbins, sparsegrid, spline, true);
+    auto grid=Grid::create(funcl, args, gridfile, g_min, g_max, g_nbins, sparsegrid, spline, true);
     if(grid->getDimension()!=args.size()) error("mismatch between dimensionality of input grid and number of arguments");
     for(unsigned i=0; i<args.size(); ++i)
       if( args[i]->isPeriodic()!=grid->getIsPeriodic()[i] ) error("periodicity mismatch between arguments and grid");

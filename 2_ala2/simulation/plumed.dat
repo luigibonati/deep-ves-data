@@ -1,0 +1,30 @@
+# Load file
+LOAD FILE=../../../0_code/NeuralNetworkVes.cpp
+
+# set up two variables for Phi and Psi dihedral angles 
+phi: TORSION ATOMS=5,7,9,15
+psi: TORSION ATOMS=7,9,15,17
+
+# nn bias
+NN_VES ...
+LABEL=nn
+ARG=phi 
+NODES=48,24,12 
+OPTIM=ADAM
+ACTIVATION=RELU
+GRID_MIN=-pi 
+GRID_MAX=pi 
+GRID_BIN=50 
+TEMP=300.
+AVE_STRIDE=500
+PRINT_STRIDE=1000 
+TARGET_STRIDE=1 
+GAMMA=10
+LRATE=0.001 
+TAU_KL=10000
+DECAY=1000
+ADAPTIVE_DECAY=0.5
+... NN_VES
+
+PRINT STRIDE=500 ARG=* FILE=COLVAR FMT=%10.8f
+

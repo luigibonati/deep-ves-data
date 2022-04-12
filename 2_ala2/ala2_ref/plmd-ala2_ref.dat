@@ -1,0 +1,17 @@
+# vim:ft=plumed
+
+# set up two variables for Phi and Psi dihedral angles 
+phi: TORSION ATOMS=5,7,9,15
+psi: TORSION ATOMS=7,9,15,17
+#
+# Activate metadynamics in phi and psi
+# depositing a Gaussian every 500 time steps,
+# with height equal to 1.2 kJoule/mol,
+# and width 0.35 rad for both CVs.
+# Well-tempered metadynamics is activated,
+# and the biasfactor is set to 6.0
+#
+metad: METAD ARG=phi,psi PACE=500 HEIGHT=1. SIGMA=0.2,0.2 FILE=HILLS BIASFACTOR=10. TEMP=300.0 GRID_MIN=-pi,-pi GRID_MAX=pi,pi GRID_BIN=300,300 CALC_RCT
+
+# monitor the two variables and the metadynamics bias potential
+PRINT STRIDE=500 ARG=* FILE=COLVAR

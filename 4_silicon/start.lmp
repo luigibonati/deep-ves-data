@@ -1,0 +1,62 @@
+echo both
+
+variable        p_id world 0 #1 2 3 #4 5 6 7 8 9
+
+log		log.setup.${p_id} append
+
+#read_restart	restart.${p_id}
+
+include		in.parameters
+units		metal
+atom_style	full
+include	in.box.${p_id}
+include 	in.setup
+
+minimize 1.0e-2 1.0e-3 100 1000
+
+reset_timestep 	0
+
+# NVT
+
+fix             1 all nve
+fix             2 all temp/csvr ${temperature} ${temperature} ${tempDamp} ${seed}
+
+velocity        all create ${temperature} ${seed} dist gaussian
+run             25000
+
+unfix           1
+unfix           2
+
+# NPT
+
+fix             1 all nph iso ${pressure} ${pressure} ${pressureDamp}
+fix             2 all temp/csvr ${temperature} ${temperature} ${tempDamp} ${seed}
+
+velocity        all create ${temperature} ${seed} dist gaussian
+run             25000
+
+unfix           1
+unfix           2
+
+# Production run
+
+log		log.simulation.${p_id} append
+
+include		in.dump
+reset_timestep  0
+
+fix             1 all plumed plumedfile plumed.dat outfile log.plumed
+fix             2 all nph iso ${pressure} ${pressure} ${pressureDamp}
+fix             3 all temp/csvr ${temperature} ${temperature} ${tempDamp} ${seed}
+fix		4 all momentum 10000 linear 1 1 1 angular
+
+run             100000000 #50000000 
+
+unfix		4
+unfix		3
+unfix		2
+unfix		1
+
+write_data	data.final.${p_id}
+
+write_restart	final_restart.${p_id}

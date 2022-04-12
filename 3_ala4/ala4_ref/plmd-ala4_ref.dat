@@ -1,0 +1,26 @@
+# vim:ft=plumed
+
+MOLINFO MOLTYPE=protein STRUCTURE=../ala4.pdb
+
+phi_1: TORSION ATOMS=@phi-2
+psi_1: TORSION ATOMS=@psi-2
+phi_2: TORSION ATOMS=@phi-3
+psi_2: TORSION ATOMS=@psi-3
+phi_3: TORSION ATOMS=@phi-4
+psi_3: TORSION ATOMS=@psi-4
+
+METAD ...
+  LABEL=metad
+  ARG=phi_1,phi_2,phi_3
+  PACE=500
+  HEIGHT=1.2
+  SIGMA=0.35,0.35,0.35
+  TEMP=300
+  BIASFACTOR=10.0
+  GRID_MIN=-pi,-pi,-pi
+  GRID_MAX=pi,pi,pi
+  GRID_BIN=80,80,80
+  CALC_RCT
+... METAD
+
+PRINT STRIDE=500 ARG=* FILE=COLVAR FMT=%10.8f

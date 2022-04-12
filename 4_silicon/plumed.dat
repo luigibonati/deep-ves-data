@@ -1,6 +1,6 @@
 # vim:ft=plumed
 
-LOAD FILE=../../../0_code/NeuralNetworkVes.cpp
+LOAD FILE=../0_code/NeuralNetworkVes.cpp
 
 ENVIRONMENTSIMILARITY ...
  SPECIES=1-216

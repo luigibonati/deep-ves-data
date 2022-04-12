@@ -1,6 +1,6 @@
 # vim:ft=plumed
 
-LOAD FILE=../../../0_code/NeuralNetworkVes.cpp
+LOAD FILE=../../0_code/NeuralNetworkVes.cpp
 
 phi1: TORSION ATOMS=5,7,9,15
 phi2: TORSION ATOMS=15,17,19,25

@@ -1,5 +1,5 @@
 # Load file
-LOAD FILE=../../../0_code/NeuralNetworkVes.cpp
+LOAD FILE=../../0_code/NeuralNetworkVes.cpp
 
 # set up two variables for Phi and Psi dihedral angles 
 phi: TORSION ATOMS=5,7,9,15

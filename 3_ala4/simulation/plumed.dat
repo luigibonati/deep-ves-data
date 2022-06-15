@@ -38,7 +38,7 @@ PRINT ARG=* STRIDE=100 FILE=COLVAR
 ENDPLUMED
 
 # The following input is related to the MC-based version used in the paper. 
-However, the interface is not stable and needs to be adjusted to comply with newer PLUMED versions 
+This is not compatible with newer plumed versions, if you want to try it you should use the code NeuralNetworkVes_ORIGINAL.cpp. 
 
 NN_VES ...
   TEMP=300.0

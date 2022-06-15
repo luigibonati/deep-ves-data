@@ -9,6 +9,36 @@ psi1: TORSION ATOMS=7,9,15,17
 psi2: TORSION ATOMS=17,19,25,27
 psi3: TORSION ATOMS=27,29,35,37
 
+# the following is a fake example using the grid-based version
+# see below ENDPLUMED for the MC-based version used in the paper
+
+NN_VES ...
+  TEMP=300.0
+  LABEL=bias
+  ARG=phi1,phi2,phi3,psi1,psi2,psi3
+  NODES=96,48,24
+  OPTIM=ADAM
+  ACTIVATION=RELU
+  GRID_MIN=-pi,-pi,-pi,-pi,-pi,-pi
+  GRID_MAX=pi,pi,pi,pi,pi,pi
+  GRID_BIN=10,10,10,10,10,10 # set to 10 to avoid std_bad_alloc
+  AVE_STRIDE=500
+  PRINT_STRIDE=100
+  TARGET_STRIDE=1
+  LRATE=0.001
+  GAMMA=10
+  TAU_KL=100000
+  DECAY=2000
+  ADAPTIVE_DECAY=20
+... NN_VES
+
+
+PRINT ARG=* STRIDE=100 FILE=COLVAR
+
+ENDPLUMED
+
+# The following input is related to the MC-based version used in the paper. 
+However, the interface is not stable and needs to be adjusted to comply with newer PLUMED versions 
 
 NN_VES ...
   TEMP=300.0
@@ -39,6 +69,4 @@ NN_VES ...
   CALC_RCT
 ... NN_VES
 
-
-PRINT ARG=* STRIDE=100 FILE=COLVAR
 

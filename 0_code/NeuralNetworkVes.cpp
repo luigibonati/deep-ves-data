@@ -19,6 +19,9 @@
    You should have received a copy of the GNU Lesser General Public License
    along with plumed.  If not, see <http://www.gnu.org/licenses/>.
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+
+#ifdef __PLUMED_HAS_LIBTORCH
+
 #include "bias/Bias.h"
 #include "core/PlumedMain.h"
 #include "core/ActionRegister.h"
@@ -952,3 +955,5 @@ std::unique_ptr<GridBase> NeuralNetworkVes::createGridFromFile(const std::string
 
 } //namespace bias
 } //namespace plumed
+
+#endif
